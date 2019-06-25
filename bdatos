@@ -1,0 +1,563 @@
+if db_id('proyecto1') is not null 
+begin 
+	use master 
+	drop database proyecto1
+end
+
+create database proyecto1
+
+
+use proyecto1
+
+drop table productos
+drop table usuarios
+drop table registros
+
+create table medida(
+idmed int primary key identity,
+nomed varchar(20) not null)
+
+create table categoria(
+idcate int primary key identity,
+nomcate varchar(30)not null)
+
+create table productos(
+codpro char(5) primary key not null,
+nombrepro varchar(25) not null,
+descripcion varchar(100),
+precio money not null,
+stock int not null,
+idmed int references medida,
+idcate int references categoria,
+imagen image not null,
+estado bit default 1,
+fechaing varchar(15) default FORMAT(GETDATE(),'yyyy-MM-dd'))
+
+drop table productos
+
+select*from productos
+select *from categoria
+select*from medida
+select *from usuarios
+
+create table usuarios(
+id int primary key identity,
+iduser varchar(25),
+contra varchar(25),
+nombre varchar(50),
+dni char(8) not null,
+direccion varchar(150),
+correo varchar(50),
+nivel int)
+drop table usuarios
+
+select *from usuarios
+
+insert into usuarios values ('bryan001','gutierrez51','Bryan Gutierrez','74674925','Av.Peru 251, San Martin de Porres','bryang8@gmail.com',1)
+insert into usuarios values ('juancho90','gomez12','Juan gomez','71249563','Av.Elmer Faucett 410,Maranga,San Miguel','juancho_14@gmail.com',2)
+insert into usuarios values ('josuepa12','kabuto150','Josue Pacherrez','79840154','Calle Tutupaca 120, Maranga, San Miguel','josuetf@gmail.com',2)
+insert into usuarios values ('waldosh','sotelo001','Waldir Sotelo','70147854','Av.Tingo Maria 5100, Breña','waldosh_97@gmail.com',2)
+insert into usuarios values ('cristofmil','pell15455','Cristofer Milla','73265012','Calle los alisos 150, San Martin de Porres','cristofermil@gmail.com',2)
+insert into usuarios values ('joshep11','12345','joseph ','45721879','Av.Peru 1500, San Martin de Porres','josepp@gmail.com',1)
+
+select *from usuarios
+--funcion para autogenerar codigo de los productos (pr001)
+create function gencodpro(@dato varchar(20))
+returns varchar(5)
+as begin
+declare @autoincremento int, @numero varchar(3),@codigo varchar(5)
+set @codigo=substring(@dato,1,2)
+select @autoincremento=isnull(max(convert(int , right (codpro,3))),0) from productos
+set @autoincremento=@autoincremento+1
+select @numero=right ('00'+convert(varchar,@autoincremento),3)
+set @codigo=RTRIM(@codigo)+RTRIM(@numero)
+return @codigo
+end
+--compilado hasta aca
+insert into categoria values ('Lacteos')
+insert into categoria values ('Gaseosas')
+insert into categoria values ('Productos de limpieza')
+insert into categoria values ('Menestras')
+insert into categoria values ('Embutidos')
+insert into categoria values ('Comestibles')
+
+insert into medida values('Unidad(es)')
+insert into medida values('Kilogramos')
+insert into medida values('Six-packs')
+insert into medida values('Tiras')
+
+create proc listcategoria
+as select *from categoria
+
+create proc listmedida
+as select *from medida
+--aca me quede pape
+--procedimiento para ingresar un nuevo producto
+create proc newprod(@nombrepro varchar(25),@descripcion varchar(50),@precio money,@stock int,@medpro int,@cate int ,@imagen image)
+as begin
+declare @cod varchar(5)
+select @cod=dbo.gencodpro('producto')
+insert into productos(codpro,nombrepro,descripcion,precio,stock,idmed,idcate,imagen) values (@cod,@nombrepro,@descripcion,@precio,@stock,@medpro,@cate,@imagen)
+end
+
+exec newprod 'Atun florida','Filete de atun Florida en aceite vegetal de 170gr',4.50,20,'unidad','C:\Users\TOSHIBA\Desktop\productos\filete de atun florida'
+select*from productos
+exec newprod 'Coca Cola 3l','Gaseosa Coca Cola de 3 litros descartable',10.50,50,'unidad','C:\Users\TOSHIBA\Desktop\productos\coca cola3l'
+
+create proc deleteprod(@codpro char(5))
+as update productos set estado=0 where codpro=@codpro
+select *from usuarios
+delete from usuarios where nombre='1'
+--compilado hasta aca
+create proc editprod(@codpro char(5),@nombrepro varchar(25),@descripcion varchar(50),@precio money,@stock int,@medpro int,@cate int, @imagen image)
+as update productos set nombrepro=@nombrepro,descripcion=@descripcion,precio=@precio,stock=@stock,idmed=@medpro,idcate=@cate,imagen=@imagen where codpro=@codpro
+
+create proc listaprod as
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,imagen  from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where stock>0 and estado=1
+
+select *from productos
+
+create proc listaprodamin as
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,imagen from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where estado=1
+
+exec listaprodamin
+exec listaprod
+select*from productos
+
+
+SELECT USER_NAME();  
+SELECT SYSDATETIME();
+SELECT name FROM sysusers WHERE name = USER_NAME(2); 
+SELECT CONVERT (time, SYSDATETIME())
+
+
+	select *from productos
+
+	drop table registros
+
+--tabla boleta
+create table boleta(
+idboleta char(5) primary key,
+id int references usuarios,
+fechaventa varchar(10))
+
+
+create function gencodbol(@dato varchar(20))
+returns varchar(5)
+as begin
+declare @autoincremento int, @numero varchar(3),@codigo varchar(5)
+set @codigo=substring(@dato,1,2)
+select @autoincremento=isnull(max(convert(int , right (idboleta,3))),0) from boleta
+set @autoincremento=@autoincremento+1
+select @numero=right ('00'+convert(varchar,@autoincremento),3)
+set @codigo=RTRIM(@codigo)+RTRIM(@numero)
+return @codigo
+end
+
+create proc nuevboleta(@codcli varchar(20))
+as begin 
+declare @codbol varchar(5),@iduser int
+set @iduser=(select id from usuarios where iduser=@codcli)
+select @codbol=dbo.gencodbol('boleta')
+insert into boleta(idboleta,id,fechaventa) values(@codbol,@iduser,FORMAT(GETDATE(),'yyyy-MM-dd'))
+end
+select *from usuarios
+select FORMAT(GETDATE(),'yyyy-MM-dd')
+exec nuevboleta 'juancho90'
+exec nuevboleta 'juancho90'
+exec nuevboleta 'juancho90'
+
+select max(idboleta) as maimo from boleta
+drop table detallebol
+create table detallebol(
+idboleta char(5) references boleta,
+codpro char(5) references productos not null,
+precio money,
+cantidad int not null
+)
+select *from productos
+
+select max(idboleta) as maximo from boleta
+delete from boleta
+create proc detbol(@codpro char(5),@precio money,@cantidad int)
+as begin
+declare @idbol char(5)
+set @idbol=(select max(idboleta) as maximo from boleta)
+insert into detallebol (idboleta,codpro,precio,cantidad) values (@idbol,@codpro,@precio,@cantidad)
+end
+--tablaregistros
+
+	create table registros(
+idreg char(5) primary key not null,
+codpro char(5) references productos,
+precio money,
+cantidad int not null,
+id int references usuarios,
+fechareg varchar(15) default FORMAT(GETDATE(),'yyyy-MM-dd'))
+
+create function gencodreg(@dato varchar(20))
+returns varchar(5)
+as begin
+declare @autoincremento int, @numero varchar(3),@codigo varchar(5)
+set @codigo=substring(@dato,1,2)
+select @autoincremento=isnull(max(convert(int , right (idreg,3))),0) from registros
+set @autoincremento=@autoincremento+1
+select @numero=right ('00'+convert(varchar,@autoincremento),3)
+set @codigo=RTRIM(@codigo)+RTRIM(@numero)
+return @codigo
+end
+
+
+ create proc ingresoreg(@codpro char(5),@cantidad int,@precio money,@codcli varchar(25))
+	as 
+	declare @cod varchar(5), @idcliente int,@idpro char(5), @stock2 int
+	set @idcliente=(select id from usuarios where iduser=@codcli)
+	set @idpro=(select codpro from productos where codpro=@codpro)
+	select @cod=dbo.gencodreg('registro')
+	if(@cantidad<=(select stock from productos where codpro=@codpro))
+	begin
+	insert into registros(idreg,codpro,precio,cantidad,id) values (@cod,@idpro,@precio,@cantidad,@idcliente)
+	update productos set stock=stock-@cantidad where codpro=@codpro
+	
+	end
+	else
+	print('no se puede vender')
+	
+	
+	exec ingresoreg 'pr002',2,1.5,'juancho90'
+	select *from registros
+	select *from productos
+	exec ingresoreg 'pr008',1,1.5,'juancho90'
+select imagen from productos where codpro='pr001'
+
+delete from productos where codpro='pr006'
+
+select getdate();
+select sysdatetime();
+select id from usuarios where iduser='juancho90'
+select idprod from productos where codpro='pr001'
+
+SELECT FORMAT(GETDATE(),'dd/MM/yyyy') Fecha;
+
+select *from registros
+select *from productos
+
+--prototipo de boleta
+select r.idventa,p.nombrepro,p.precio,r.cantidad,u.iduser from registros r inner join	productos p on r.idprod=p.idprod inner join usuarios u on u.id=r.id where u.iduser='juancho90'
+
+--prototipo detalle boleta
+select r.idventa,p.nombrepro,p.precio as preciounitario,r.cantidad,(p.precio*r.cantidad) as importe ,u.iduser  from registros r inner join	productos p on r.idprod=p.idprod inner join usuarios u on u.id=r.id where u.iduser='juancho90'
+
+alter proc deletereg(@codreg char(5))
+as 
+declare @recov int,@idpro char(5)
+set @recov=(select cantidad from registros where idreg=@codreg )
+set @idpro=(select codpro from registros where idreg=@codreg)
+begin 
+delete from registros where idreg=@codreg
+update productos set stock=stock+@recov where codpro=@idpro
+end
+
+exec deletereg 're003'
+select *from registros
+select *from productos
+select *from boleta
+delete from boleta
+select *from registros
+select *from detallebol
+delete from registros
+exec deletereg 're002'
+--boleta fake
+
+
+select*from productos
+select*from registros
+select*from usuarios
+
+delete from productos where codpro='pr003'
+
+--aca me quede ptito
+create proc consulprod(@namae varchar(25))
+as
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,imagen from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where estado=1 and nombrepro like (@namae+'%')
+
+exec consulprod 'LE'
+
+select *from productos where nombrepro like 'man%' and stock>0
+
+create proc consulproduser(@namae varchar(25))
+as
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,imagen from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where estado=1 and nombrepro like (@namae+'%') and stock>0
+
+select *from registros
+select*from usuarios
+select*from productos
+--cantidad total de productos comprados segun idprod(tabla registros y productos)
+select p.nombrepro,sum(r.cantidad) as canttotal from productos p inner join registros r on r.idprod=p.idprod where p.idprod=20 group by p.idprod, p.nombrepro
+--importe de producto segun idprod(tabla productos y registros)
+select p.nombrepro,sum(r.cantidad*r.precio) as importe from productos p inner join registros r on r.idprod=p.idprod where p.idprod=20 group by p.idprod, p.nombrepro
+--importe total segun id(tabla cliente)
+select u.iduser,u.nombre,sum(r.cantidad*r.precio) as importetotal from registros r inner join usuarios u on r.id=u.id where u.id=3 group by  u.id,u.iduser,u.nombre
+--union
+select sum(r.cantidad) as canttotal,p.nombrepro, p.precio as preciounitario , sum(r.cantidad*r.precio) as importe, u.iduser,FORMAT(GETDATE(),'dd/MM/yyyy') as fechacompra  from productos p inner join registros r on r.idprod=p.idprod inner join usuarios u on u.id=r.id  group by p.idprod, p.nombrepro,p.precio, u.iduser
+
+
+
+
+select *from detallebol
+
+select p.codpro, sum(r.cantidad) as canttotal,p.nombrepro, p.precio as preciounitario , sum(r.cantidad*r.precio) as importe, u.iduser,FORMAT(GETDATE(),'dd/MM/yyyy') as fechacompra  from productos p inner join registros r on r.idprod=p.idprod inner join usuarios u on u.id=r.id where u.iduser='juancho90' group by p.idprod, p.nombrepro,p.precio, u.iduser,p.codpro
+select*from productos
+
+create proc listusu(@cod varchar(25)) as
+select iduser,contra,nombre,dni,direccion,correo,nivel from usuarios where iduser=@cod
+exec listusu 'juancho90'
+
+select fechaventa from boleta group by fechaventa
+
+--create proc importetotal(@cod varchar(25))
+--as select u.iduser,u.nombre,sum(r.cantidad*r.precio) as importetotal from registros r inner join usuarios u on r.id=u.id where u.iduser=@cod group by  u.id,u.iduser,u.nombre
+
+exec importetotal 'josuepa12'
+
+select *from usuarios
+create proc newcliente(@iduser varchar(25),@contra varchar(25),@nombre varchar(50),@dni char(8),@direccion varchar(80), @correo varchar(50))
+as insert into usuarios values(@iduser,@contra,@nombre,@dni,@direccion,@correo,2)
+
+exec insertboleta 'juancho90'
+
+select*from boleta
+delete from boleta
+drop table boleta
+
+select p.codpro,p.nombrepro,sum(r.cantidad) as canttotal,p.precio as preciounitario , sum(r.cantidad*r.precio) as importe, u.iduser,FORMAT(GETDATE(),'dd/MM/yyyy') as fechacompra  from productos p inner join registros r on r.idprod=p.idprod inner join usuarios u on u.id=r.id where u.iduser='juancho90' group by p.idprod, p.nombrepro,p.precio, u.iduser,p.codpro
+
+
+
+--fake
+
+drop table detallebol
+delete from registros
+select *from boleta
+select *from registros
+select*from registros r inner join productos p on r.idprod=p.idprod
+
+select *from detallebol
+
+
+select r.idreg,p.nombrepro,p.precio,r.cantidad,u.iduser,(p.precio*r.cantidad) as importe from registros r inner join productos p on r.codpro=p.codpro inner join usuarios u on u.id=r.id where u.id=2
+
+select *from registros
+select *from usuarios
+
+select * from boleta b inner join detallebol d on d.idboleta=b.idboleta
+--detalle general boleta
+select b.idboleta,p.codpro,p.nombrepro,sum(d.cantidad) as canttotal,p.precio as preciounitario,sum(d.cantidad*d.precio) as importe,u.nombre,b.fechaventa from boleta b inner join usuarios u on u.id=b.id inner join detallebol d on d.idboleta=b.idboleta inner join productos p on d.codpro=p.codpro group by b.idboleta,p.codpro,p.nombrepro,p.precio,u.nombre,b.fechaventa
+--aa
+select sum(d.cantidad) as canttotal from detallebol d
+
+
+delete from detallebol
+delete from registros
+delete from boleta
+delete from productos
+select *from boleta
+
+
+select *from usuarios
+alter proc fechabol(@iduser varchar(20))
+as
+select fechaventa from boleta b inner join usuarios u on b.id=u.id where iduser=@iduser and fechaventa=FORMAT(GETDATE(),'yyyy-MM-dd') group by fechaventa
+exec fechabol 'juancho90'
+
+--procedimiento guardado de datos-boleta
+create proc listboleta(@codcli varchar(25)) as
+select p.codpro,p.nombrepro,sum(d.cantidad) as canttotal,p.precio as preciounitario,sum(d.cantidad*d.precio) as importe from boleta b inner join usuarios u on u.id=b.id inner join detallebol d on d.idboleta=b.idboleta inner join productos p on d.codpro=p.codpro  where u.iduser=@codcli and b.fechaventa=FORMAT(GETDATE(),'yyyy-MM-dd') group by p.codpro,p.nombrepro,p.precio
+
+exec listboleta 'josuepa12'
+
+alter proc importetotal(@codcli varchar(20))
+as select sum(cantidad*precio) as importto from detallebol d inner join boleta b on d.idboleta=b.idboleta inner join usuarios u on b.id=u.id where u.iduser=@codcli and fechaventa=FORMAT(GETDATE(),'yyyy-MM-dd')
+
+exec importetotal 'josuepa12'
+
+create proc listareportes
+as
+select p.codpro,p.nombrepro,sum(d.cantidad) as canttotal,p.precio as preciounitario,sum(d.cantidad*d.precio) as importe,u.nombre,b.fechaventa from boleta b inner join usuarios u on u.id=b.id inner join detallebol d on d.idboleta=b.idboleta inner join productos p on d.codpro=p.codpro group by p.codpro,p.nombrepro,p.precio,u.nombre,b.fechaventa
+
+exec listareportes
+create proc buscareportes(@fechaventa varchar(20))
+as
+select p.codpro,p.nombrepro,sum(d.cantidad) as canttotal,p.precio as preciounitario,sum(d.cantidad*d.precio) as importe,u.nombre,b.fechaventa from boleta b inner join usuarios u on u.id=b.id inner join detallebol d on d.idboleta=b.idboleta inner join productos p on d.codpro=p.codpro where fechaventa=@fechaventa group by p.codpro,p.nombrepro,p.precio,u.nombre,b.fechaventa
+
+exec buscareportes '2019-06-02'
+
+exec listareportes
+
+
+select p.codpro,p.nombrepro,sum(d.cantidad) as canttotal,p.precio as preciounitario,sum(d.cantidad*d.precio) as importe,b.fechaventa from detallebol d on d.idboleta=b.idboleta inner join productos p on d.codpro=p.codpro group by p.codpro,p.nombrepro,p.precio,b.fechaventa
+--falta(compilado hasta aca)
+create proc prodmasvendido(@nro varchar(3))
+as
+declare @nro2 int
+set @nro2=(select convert(int,@nro) as nmero)
+begin
+select top (@nro2) d.codpro,p.nombrepro , cantidad from detallebol d inner join productos p on p.codpro=d.codpro group by d.codpro, cantidad,p.nombrepro order by cantidad desc
+end
+
+
+exec prodmasvendido '2'
+exec listaprodvend
+create proc listaprodvend
+as
+select d.codpro,p.nombrepro , cantidad from detallebol d inner join productos p on p.codpro=d.codpro group by d.codpro, cantidad,p.nombrepro order by cantidad desc
+
+
+select * from detallebol
+
+create proc ventmasvenxfecha(@nro int,@fecha varchar(20))
+as select top (@nro) d.codpro,p.nombrepro , cantidad from detallebol d inner join boleta b on b.idboleta=d.idboleta inner join productos p on p.codpro=d.codpro where b.fechaventa=@fecha group by d.codpro, cantidad,p.nombrepro order by cantidad desc
+
+
+create proc buscateadmin(@idcate int) as
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,imagen from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where estado=1 and c.idcate=@idcate
+
+
+exec buscateadmin 1
+alter proc topcliente(@mes varchar(1), @top varchar(3))
+as
+declare @nro2 int,@nro3 int
+set @nro2=(select convert(int,@mes) as nmero)
+set @nro3=(select convert(int,@top) as nmero2)
+begin
+select top(@nro3) u.nombre, dni,direccion,correo,DATENAME ( MONTH , fechaventa) as mess,sum(d.cantidad*d.precio) as importto from boleta b inner join usuarios u on b.id=u.id inner join detallebol d on d.idboleta=b.idboleta where month(fechaventa)=@nro2 group by u.nombre,DATENAME ( MONTH , fechaventa),dni,direccion,correo order by sum(d.cantidad*d.precio) desc
+end
+exec topcliente '6','10'
+
+alter proc topclientedefault
+as select top(5) u.nombre, dni,direccion,correo,DATENAME ( MONTH , getdate()) as mess,sum(d.cantidad*d.precio) as importto from boleta b inner join usuarios u on b.id=u.id inner join detallebol d on d.idboleta=b.idboleta where month(fechaventa)=month(getdate()) group by u.nombre,DATENAME ( MONTH , fechaventa),dni,direccion,correo order by sum(d.cantidad*d.precio) desc
+
+exec topclientedefault
+select month(getdate()) tutio
+exec topclientedefault
+select *from usuarios
+create table meses(
+idmes int primary key identity,
+nomes varchar(25) not null)
+
+insert into meses values('Enero')
+
+insert into meses values('Febrero')
+
+insert into meses values('Marzo')
+
+insert into meses values('Abril')
+
+insert into meses values('Mayo')
+
+insert into meses values('Junio')
+
+insert into meses values('Julio')
+
+insert into meses values('Agosto')
+
+insert into meses values('Setiembre')
+
+insert into meses values('Octubre')
+
+insert into meses values('Noviembre')
+
+insert into meses values('Diciembre')
+select *from meses
+
+set language us_english;	
+set language spanish;
+select DATENAME ( MONTH , GETDATE() ) tutio
+
+select *from boleta
+
+create proc meses2 as select *from meses
+exec meses2
+drop proc meses
+create proc proxcate(@idcate varchar(3)) as
+select codpro, nombrepro,descripcion,precio,stock,imagen from productos p inner join categoria c on c.idcate=p.idcate where c.idcate=@idcate
+
+exec proxcate 1
+
+exec listareportes
+
+
+select*from productos
+
+create proc buscacliente(@idcate int) as
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,imagen  from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where stock>0 and estado=1 and c.idcate=@idcate
+
+exec listaprod
+
+exec buscacliente 3
+
+select *from registros
+
+select *from productos
+
+exec deletereg 're001'
+exec deletereg 're002'
+exec deletereg 're003'
+exec deletereg 're004'
+exec deletereg 're005'
+exec deletereg 're006'
+exec deletereg 're007'
+exec deletereg 're008'
+delete from boleta
+delete from detallebol
+
+select*from registros
+
+update registros set fechareg='2019-05-02' where idreg='re025' 
+
+update boleta set fechaventa='2019-01-25' where id=2 and idboleta='bo001' or idboleta='bo023'  or idboleta='bo058'
+select d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre,sum(d.precio*d.cantidad) as importe from boleta b inner join detallebol d on d.idboleta=b.idboleta inner join usuarios u on b.id=u.id where u.id=2 and b.fechaventa=FORMAT(GETDATE(),'yyyy-MM-dd') group by d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre
+select d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre,sum(d.precio*d.cantidad) as importe from boleta b inner join detallebol d on d.idboleta=b.idboleta inner join usuarios u on b.id=u.id where u.id=2  group by d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre
+
+exec importetotal 'juancho90'
+
+exec fechabol 'juancho90'
+select d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre,sum(d.precio*d.cantidad) as importe from boleta b inner join detallebol d on d.idboleta=b.idboleta inner join usuarios u on b.id=u.id where u.id=2 and b.fechaventa=FORMAT(GETDATE(),'yyyy-MM-dd') group by d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre
+select *from registros where codpro='pr003' or codpro='pr005' or codpro='pr014'or codpro='pr004'or codpro='pr017'or codpro='pr009' or codpro='pr027' and id=2
+select *from registros where id=2 and fechareg=FORMAT(GETDATE(),'yyyy-MM-dd')
+
+select d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre,sum(d.precio*d.cantidad) as importe from boleta b inner join detallebol d on d.idboleta=b.idboleta inner join usuarios u on b.id=u.id where u.id=2 and b.fechaventa=FORMAT(GETDATE(),'yyyy-MM-dd') group by d.codpro,b.fechaventa,b.id,b.idboleta,u.nombre
+
+
+select *from productos
+select *from registros where id=2
+update productos set fechaing='2019-05-01' where codpro='pr005'
+update productos set fechaing='2019-04-01' where codpro='pr007'
+update productos set fechaing='2019-03-10' where codpro='pr010'
+update productos set fechaing='2019-03-10' where codpro='pr011'
+update productos set fechaing='2019-01-08' where codpro='pr003'
+update productos set fechaing='2019-05-01' where codpro='pr020'
+update productos set fechaing='2019-04-11' where codpro='pr021'
+update productos set fechaing='2019-05-03' where codpro='pr025'
+update productos set fechaing='2019-04-29' where codpro='pr022'
+update productos set fechaing='2019-01-10' where codpro='pr001'
+update productos set fechaing='2019-05-15' where codpro='pr016'
+update productos set fechaing='2019-05-24' where codpro='pr027'
+update productos set fechaing='2019-02-15' where codpro='pr018'
+update productos set fechaing='2019-02-19' where codpro='pr014'
+
+select *from productos
+select*from detallebol where codpro='pr016' and id=2
+
+create proc prodefault
+as select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,fechaing,imagen from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where estado=1
+
+exec prodefault
+
+create proc proxmes(@mes varchar(2))
+as
+declare @nro int
+set @nro=(select convert(int,@mes) as numm)
+begin
+select codpro, nombrepro, descripcion,precio,stock,m.nomed,c.nomcate,fechaing,imagen from productos p inner join categoria c on p.idcate=c.idcate inner join medida m on p.idmed=m.idmed where estado=1 and month(fechaing)=@nro
+end
